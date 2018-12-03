@@ -14,6 +14,17 @@ def calc_velocity(direction, vel=1.0):
         velocity.x = -vel
     return velocity
 
+def reverse_direction(sprite):
+    if sprite.direction == 0:
+        sprite.direction = 4
+    elif sprite.direction == 2:
+        sprite.direction = 6
+    elif sprite.direction == 4:
+        sprite.direction = 0
+    elif sprite.direction == 6:
+        sprite.direction = 2
+
+
 pygame.init()
 screen = pygame.display.set_mode((800,600))
 pygame.display.set_caption("吃苹果")
@@ -23,6 +34,7 @@ timer = pygame.time.Clock()
 #创建精灵组
 player_group = pygame.sprite.Group()
 food_group = pygame.sprite.Group()
+npc_group = pygame.sprite.Group()
 
 #初始化玩家精灵组
 player = MySprite()
@@ -30,6 +42,15 @@ player.load("farmer walk.png", 96, 96, 8)
 player.position = 80, 80
 player.direction = 4
 player_group.add(player)
+
+# 初始化NPC精灵组
+npc_image = pygame.image.load("zombie walk.png").convert_alpha()
+for n in range(0, 10):
+    npc = MySprite()
+    npc.load("zombie walk.png", 96, 96, 8)
+    npc.position = random.randint(0,700), random.randint(0,500)
+    npc.direction = random.randint(0,3) * 2
+    npc_group.add(npc)
 
 #初始化food精灵组
 
@@ -97,6 +118,29 @@ while True:
             if player.Y < 0: player.Y = 0
             elif player.Y > 500: player.Y = 500
 
+        #更新NPC
+        npc_group.update(ticks, 50)
+        for z in npc_group:
+            z.first_frame = z.direction * z.columns
+            z.last_frame = z.first_frame + z.columns - 1
+            if z.frame < z.first_frame:
+                z.frame = z.first_frame
+            z.velocity = calc_velocity(z.direction)
+
+            z.X += z.velocity.x
+            z.Y += z.velocity.y
+            if z.X < 0 or z.X > 700 or z.Y < 0 or z.Y > 500:
+                reverse_direction(z)
+
+        attacker = None
+        attacker = pygame.sprite.spritecollideany(player, npc_group)
+        if attacker != None:
+            if pygame.sprite.collide_rect_ratio(0.5)(player,attacker):
+                #遇到NPC直接gameover
+                game_over = True
+            else:
+                attacker = None
+
         #检测玩家是否与食物冲突，是否吃到果实
         attacker = None
         attacker = pygame.sprite.spritecollideany(player, food_group)
@@ -115,6 +159,7 @@ while True:
 
     #绘制精灵
     food_group.draw(screen)
+    npc_group.draw(screen)
     player_group.draw(screen)
 
     #绘制玩家血量条
